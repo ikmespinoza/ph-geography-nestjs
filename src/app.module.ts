@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 
+import { ConfigModule } from '@/config/config.module';
 import { HealthController } from '@/health.controller';
 
 /**
- * Root module. Feature modules (config, persistence, geography, ingestion) are
- * wired in as they land; for now it only mounts the temporary health ping.
+ * Root module. Feature modules (persistence, geography, ingestion) are wired in
+ * as they land; the global ConfigModule is loaded first so config is available
+ * everywhere.
  */
 @Module({
-  imports: [],
+  imports: [ConfigModule],
   controllers: [HealthController],
   providers: [],
 })

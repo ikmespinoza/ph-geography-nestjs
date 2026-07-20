@@ -1,19 +1,22 @@
 import { VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '@/app.module';
+import type { AppConfig } from '@/config/app.config';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  const { port, globalPrefix, apiVersion } = app.get(ConfigService).getOrThrow<AppConfig>('app');
+
   // Every route is served under /api/v1 — the global prefix + URI versioning are
   // set here so all later controllers inherit them without per-controller config.
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
+  app.setGlobalPrefix(globalPrefix);
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: apiVersion });
   app.enableShutdownHooks();
 
-  // TODO: source the port from ConfigService once the config module exists.
-  await app.listen(3000);
+  await app.listen(port);
 }
 
 void bootstrap();
