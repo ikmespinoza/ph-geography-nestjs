@@ -1,0 +1,14 @@
+// PH Geography API — Prisma schema.
+// Prisma 7 (query compiler + driver adapter). The runtime client connects through
+// @prisma/adapter-pg (see PrismaService); the `url` below is used by the Prisma CLI
+// for migrations. Actual models land in PHG-004 — this establishes the datasource,
+// generator, and migration tooling against an empty schema.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

@@ -26,5 +26,5 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-# Prisma generated client lands here later (migrations ARE committed)
-# /generated
+# Prisma generated client (migrations under prisma/migrations/ ARE committed)
+src/generated/

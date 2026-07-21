@@ -3,9 +3,6 @@
 REST API for Philippine geographic reference data — **regions → provinces → cities/municipalities** — with a
 self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (Prisma)**.
 
-> **Early development.** The project is being built out module by module. Today only `GET /api/v1/health` is
-> implemented; the resource endpoints, database, and ingestion are in progress.
-
 ## Requirements
 
 - **Node.js 20 LTS** (`.nvmrc`) — newer majors work; 20 is the declared baseline (`engines`).
@@ -13,9 +10,6 @@ self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (P
 - **PostgreSQL 16** (local via Docker) — required once the data layer lands.
 
 ## Usage
-
-> Today the scaffold runs with just **steps 1, 5, and 8** (clone, install, run). The database, seed, and ingest
-> steps become available as the data layer and ingestion pipeline are added.
 
 ### Installation Instructions
 
@@ -36,16 +30,16 @@ self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (P
 
 All endpoints are read-only `GET`s under `/api/v1`.
 
-| Method | Path | Handler | Description |
-| ------ | ---- | ------- | ----------- |
-| GET | `/api/v1/regions` | `RegionsController.index` | All regions (ordered by name) |
-| GET | `/api/v1/regions/{region}` | `RegionsController.show` | A region with its provinces |
-| GET | `/api/v1/regions/{region}/provinces` | `ProvincesController.index` | Provinces in the region |
-| GET | `/api/v1/regions/{region}/provinces/{province}` | `ProvincesController.show` | A province with its region + cities |
-| GET | `/api/v1/regions/{region}/provinces/{province}/cities` | `CitiesController.index` | Cities/municipalities in the province |
-| GET | `/api/v1/regions/{region}/provinces/{province}/cities/{city}` | `CitiesController.show` | A city/municipality (with classification + province) |
-| GET | `/api/v1/health` | `HealthController` | Liveness ping (temporary) |
-| GET | `/api/docs` | — | OpenAPI / Swagger UI |
+| Method | Path                                                          | Handler                     | Description                                          |
+| ------ | ------------------------------------------------------------- | --------------------------- | ---------------------------------------------------- |
+| GET    | `/api/v1/regions`                                             | `RegionsController.index`   | All regions (ordered by name)                        |
+| GET    | `/api/v1/regions/{region}`                                    | `RegionsController.show`    | A region with its provinces                          |
+| GET    | `/api/v1/regions/{region}/provinces`                          | `ProvincesController.index` | Provinces in the region                              |
+| GET    | `/api/v1/regions/{region}/provinces/{province}`               | `ProvincesController.show`  | A province with its region + cities                  |
+| GET    | `/api/v1/regions/{region}/provinces/{province}/cities`        | `CitiesController.index`    | Cities/municipalities in the province                |
+| GET    | `/api/v1/regions/{region}/provinces/{province}/cities/{city}` | `CitiesController.show`     | A city/municipality (with classification + province) |
+| GET    | `/api/v1/health`                                              | `HealthController`          | Liveness ping (temporary)                            |
+| GET    | `/api/docs`                                                   | —                           | OpenAPI / Swagger UI                                 |
 
 `{region}` and `{province}` are **ISO 3166 codes** (e.g. `PH-13`, `PH-AGN`); `{city}` is a `name` slug unique
 within its province. Only `/api/v1/health` is implemented today; the resource routes are in progress.

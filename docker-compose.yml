@@ -1,0 +1,29 @@
+# Local development database. One command: `docker compose up -d db`.
+# Credentials/port match `.env.example` DATABASE_URL
+# (postgresql://ph_geography:ph_geography@localhost:5432/ph_geography).
+# Dev-only defaults — never reuse these in a deployed environment.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ph-geography-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ph_geography
+      POSTGRES_PASSWORD: ph_geography
+      POSTGRES_DB: ph_geography
+    ports:
+      # Host port defaults to 5432; override via DB_PORT (Compose reads it from
+      # .env) when 5432 is already taken locally. Keep the port in DATABASE_URL
+      # in sync with whatever you set here.
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - ph_geography_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ph_geography -d ph_geography']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  ph_geography_db_data:
