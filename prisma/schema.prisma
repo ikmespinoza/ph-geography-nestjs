@@ -1,8 +1,18 @@
 // PH Geography API — Prisma schema.
 // Prisma 7 (query compiler + driver adapter). The runtime client connects through
-// @prisma/adapter-pg (see PrismaService); the `url` below is used by the Prisma CLI
-// for migrations. Actual models land in PHG-004 — this establishes the datasource,
-// generator, and migration tooling against an empty schema.
+// @prisma/adapter-pg (see PrismaService); the `url` used by the Prisma CLI for
+// migrations comes from prisma.config.ts.
+//
+// Ported from the legacy Lumen/MySQL schema (PHG-004). Model fields are idiomatic
+// camelCase and `@map` to the legacy snake_case columns / `@@map` to the legacy
+// table names, so the wire/DB shape stays faithful while the generated client
+// stays TypeScript-idiomatic. Constraints the legacy schema lacked are added here:
+// unique natural keys (`code`), a composite city natural key for idempotent upsert,
+// and explicit FK indexes (Postgres does not auto-index foreign keys).
+//
+// Deferred by decision (see context/current-tasks/features.md):
+//  - OD-9: change-detection state table → PHG-011 (scraper-core owns its shape).
+//  - OD-10: soft-delete columns → added later only if OD-10 resolves that way.
 
 generator client {
   provider = "prisma-client"
@@ -11,4 +21,76 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// A top-level Philippine region (e.g. PH-13 — Caraga). Public identifier is `code`
+/// (OD-1); the numeric `id` is internal only.
+model Region {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(20)
+  name      String
+  nameTl    String   @map("name_tl")
+  acronym   String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  provinces Province[]
+
+  @@map("regions")
+}
+
+/// A province within a region (e.g. PH-AGN — Agusan del Norte). NCR district
+/// pseudo-provinces (PH-00-D1…D4) are seeded at ingestion time (PHG-013).
+model Province {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(20)
+  name      String
+  altName   String?  @map("alt_name")
+  nameTl    String   @map("name_tl")
+  regionId  Int      @map("region_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  region Region @relation(fields: [regionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  cities City[]
+
+  @@index([regionId])
+  @@map("provinces")
+}
+
+/// LGU classification (Municipality / Component City / ICC / HUC). Static reference
+/// data seeded idempotently by `db:seed`.
+model Classification {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(20)
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  cities City[]
+
+  @@map("classifications")
+}
+
+/// A city or municipality. `(province_id, name)` is the natural key used for
+/// idempotent upsert during ingestion (OD-10) — cities have no ISO code.
+model City {
+  id               Int      @id @default(autoincrement())
+  name             String
+  altName          String?  @map("alt_name")
+  fullName         String   @map("full_name")
+  isCapital        Boolean  @default(false) @map("is_capital")
+  provinceId       Int      @map("province_id")
+  classificationId Int      @map("classification_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  province       Province       @relation(fields: [provinceId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  classification Classification @relation(fields: [classificationId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  // Natural key for idempotent upsert. Its index also covers province-scoped
+  // lookups (province_id leading column), so no separate province_id index.
+  @@unique([provinceId, name])
+  @@index([classificationId])
+  @@map("cities")
 }
