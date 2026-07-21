@@ -19,6 +19,10 @@ export default defineConfig({
   schema: path.join('prisma', 'schema.prisma'),
   migrations: {
     path: path.join('prisma', 'migrations'),
+    // Single definition of the seed command: `prisma db seed` (→ `pnpm db:seed`)
+    // and post-`migrate dev`/`migrate reset` all run this. `--transpile-only`
+    // skips typechecking the generated client for a fast, dependency-light run.
+    seed: 'ts-node --transpile-only prisma/seed.ts',
   },
   datasource: {
     url: process.env.DATABASE_URL,
