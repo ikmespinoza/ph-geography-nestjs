@@ -44,6 +44,48 @@ All endpoints are read-only `GET`s under `/api/v1`.
 `{region}` and `{province}` are **ISO 3166 codes** (e.g. `PH-13`, `PH-AGN`); `{city}` is a `name` slug unique
 within its province. Only `/api/v1/health` is implemented today; the resource routes are in progress.
 
+### API conventions
+
+The API follows **standard REST** — a deliberate break from the legacy Lumen app, which wrapped every
+response in `{ success, response, code, memory_usage }` and answered **HTTP 200 even for "not found"**.
+
+**Success** — the resource itself, no envelope, with the status code carrying the outcome:
+
+```jsonc
+// GET /api/v1/regions/PH-13  →  200
+{ "code": "PH-13", "name": "Caraga", "name_tl": "Rehiyon ng Caraga", "alt_name": "Region XIII" }
+```
+
+- **Wire fields are `snake_case`** (`name_tl`, `alt_name`, `full_name`, `is_capital`) even though the
+  TypeScript models are camelCase — response DTOs map the two with `@Expose({ name: 'name_tl' })`.
+- Response DTOs are **opt-in**: `@Exclude()` on the class, `@Expose()` per field. Internal columns (`id`,
+  foreign keys, `created_at`/`updated_at`) never reach the wire unless a DTO asks for them.
+- `memory_usage` is gone — it was a PHP artifact with no meaning here.
+
+**Errors** — [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json`, with the
+status code telling the truth:
+
+```jsonc
+// GET /api/v1/regions/PH-99  →  404  Content-Type: application/problem+json
+{
+  "type": "about:blank",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Region 'PH-99' was not found.",
+  "instance": "/api/v1/regions/PH-99"
+}
+```
+
+| Status | When |
+| ------ | ---- |
+| `400 Bad Request` | Request validation failed. Adds an `errors` array of constraint messages. Every endpoint is read-only, so invalid input is always a malformed path or query param — hence 400 rather than 422. |
+| `404 Not Found` | The resource, or the route, does not exist. |
+| `500 Internal Server Error` | Unexpected failure. The detail is generic; the stack is logged server-side and never returned. |
+
+Requests are validated by a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`). On any
+endpoint that declares a query DTO, an undeclared query param is a `400` rather than a silent no-op; endpoints
+that take no query parameters at all ignore extras.
+
 ## Architecture
 
 Standalone modular monolith. `src/geography/` **reads** the DB and serves `/api/v1`; `src/ingestion/` **writes**
