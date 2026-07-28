@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { CommonModule } from '@/common/common.module';
 import { ConfigModule } from '@/config/config.module';
+import { GeographyModule } from '@/geography/geography.module';
 import { HealthController } from '@/health.controller';
 import { PersistenceModule } from '@/persistence/persistence.module';
 
@@ -12,7 +13,7 @@ import { PersistenceModule } from '@/persistence/persistence.module';
  * the HTTP layer (validation, serialization, problem+json errors) on every route.
  */
 @Module({
-  imports: [ConfigModule, PersistenceModule, CommonModule],
+  imports: [ConfigModule, PersistenceModule, CommonModule, GeographyModule],
   controllers: [HealthController],
   providers: [],
 })
