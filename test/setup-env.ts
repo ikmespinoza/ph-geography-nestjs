@@ -6,3 +6,6 @@
  */
 process.env.NODE_ENV ??= 'test';
 process.env.DATABASE_URL ??= 'postgresql://test:test@localhost:5432/ph_geography_test';
+// Booting AppModule also wires IngestionModule; no test process should arm the
+// scheduled scrape (it would leave a live timer behind after the suite).
+process.env.INGESTION_ENABLE_SCHEDULE ??= 'false';

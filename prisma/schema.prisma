@@ -11,8 +11,9 @@
 // and explicit FK indexes (Postgres does not auto-index foreign keys).
 //
 // Deferred by decision (see context/current-tasks/features.md):
-//  - OD-9: change-detection state table → PHG-011 (scraper-core owns its shape).
-//  - OD-10: soft-delete columns → added later only if OD-10 resolves that way.
+//  - OD-10: soft-delete columns → not added; M3 resolved OD-10 as "upsert by
+//    natural key, no delete handling" (rows absent from the source are reported,
+//    not removed).
 
 generator client {
   provider = "prisma-client"
@@ -93,4 +94,27 @@ model City {
   @@unique([provinceId, name])
   @@index([classificationId])
   @@map("cities")
+}
+
+/// Change-detection high-water mark per (source, resource) — OD-9. Ingestion
+/// processes a resource only when the source page's "last edited" timestamp is
+/// newer than `lastSeenAt`, and advances the mark only after the write succeeds.
+/// Replaces the legacy polymorphic `histories` table, which keyed rows on a PHP
+/// class name and was never applied to cities at all.
+model SourceSyncState {
+  id         Int      @id @default(autoincrement())
+  /// Source name, e.g. `ISO 3166`.
+  source     String   @db.VarChar(50)
+  /// `region` | `province` | `city`. A plain string, not an enum: adding a
+  /// resource must not require a migration, and the value never reaches the wire.
+  resource   String   @db.VarChar(20)
+  /// The source page's own "last edited" timestamp, as last processed.
+  lastSeenAt DateTime @map("last_seen_at")
+  /// When this service last processed the resource.
+  lastRunAt  DateTime @map("last_run_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([source, resource])
+  @@map("source_sync_state")
 }

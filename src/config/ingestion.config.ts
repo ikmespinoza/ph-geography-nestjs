@@ -9,6 +9,12 @@ export interface IngestionConfig {
   readonly requestTimeoutMs: number;
   /** User-Agent sent by the scraper's HttpFetcher. */
   readonly userAgent: string;
+  /** Retry attempts after the first failed fetch (0 disables retrying). */
+  readonly maxRetries: number;
+  /** Base backoff between fetch attempts, doubled per attempt. */
+  readonly retryBackoffMs: number;
+  /** Whether the `@Cron` scheduled run is armed in this process. */
+  readonly enableSchedule: boolean;
 }
 
 /**
@@ -22,5 +28,8 @@ export const ingestionConfig = registerAs('ingestion', (): IngestionConfig => {
     scheduleCron: env.INGESTION_SCHEDULE_CRON,
     requestTimeoutMs: env.INGESTION_REQUEST_TIMEOUT_MS,
     userAgent: env.INGESTION_USER_AGENT,
+    maxRetries: env.INGESTION_MAX_RETRIES,
+    retryBackoffMs: env.INGESTION_RETRY_BACKOFF_MS,
+    enableSchedule: env.INGESTION_ENABLE_SCHEDULE,
   };
 });

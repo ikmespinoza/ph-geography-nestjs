@@ -19,8 +19,10 @@ self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (P
 4. Configure your `.env` (at minimum `DATABASE_URL`).
 5. Install dependencies: `pnpm install`.
 6. Create the schema: `pnpm db:migrate`.
-7. Seed lookups (classifications + NCR districts) and load the dataset: `pnpm db:seed` then `pnpm ingest`
-   (scrapes the source → DB).
+7. Seed the classification lookups, then load the dataset: `pnpm db:seed` (required — cities cannot be
+   written without it), then `pnpm ingest` (scrapes the sources → DB; add `--force` to re-process pages
+   that haven't changed). The NCR district provinces are created by the ingestion run itself, since they
+   hang off the scraped `PH-00` region.
 8. Start the API: `pnpm dev` → **http://localhost:3000/api/v1** (health at `/api/v1/health`).
 
 **Common scripts:** `pnpm dev` · `pnpm build` · `pnpm start:prod` · `pnpm lint` · `pnpm format` · `pnpm test` ·
