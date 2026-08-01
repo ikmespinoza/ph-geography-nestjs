@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import { ResourceNotFoundException } from '@/common/http/resource-not-found.exception';
+import { RegionSummaryDto } from '@/geography/dto/region-summary.dto';
 import { RegionDetailDto } from '@/geography/regions/dto/region-detail.dto';
-import { RegionListItemDto } from '@/geography/regions/dto/region-list-item.dto';
 import { PrismaService } from '@/persistence/prisma.service';
 
 /**
@@ -14,11 +14,15 @@ import { PrismaService } from '@/persistence/prisma.service';
 export class RegionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** All regions, ordered by `name` (legacy `Region::orderBy('name')`). */
-  async findAll(): Promise<RegionListItemDto[]> {
+  /**
+   * All regions, ordered by `name` (legacy `Region::orderBy('name')`). Each item is
+   * the canonical `RegionSummaryDto` — the same shape a region takes when nested
+   * inside a province (PHG-010).
+   */
+  async findAll(): Promise<RegionSummaryDto[]> {
     const regions = await this.prisma.region.findMany({ orderBy: { name: 'asc' } });
 
-    return regions.map((region) => new RegionListItemDto(region));
+    return regions.map((region) => new RegionSummaryDto(region));
   }
 
   /**

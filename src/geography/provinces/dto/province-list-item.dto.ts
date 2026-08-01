@@ -1,6 +1,7 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 
-import { ProvinceRegionDto } from '@/geography/provinces/dto/province-region.dto';
+import { blankToNull } from '@/common/text/nullable.util';
+import { RegionSummaryDto } from '@/geography/dto/region-summary.dto';
 import type { Province, Region } from '@/generated/prisma/client';
 
 /**
@@ -10,6 +11,9 @@ import type { Province, Region } from '@/generated/prisma/client';
  * `GET /api/v1/regions/{region}/provinces/{province}` for those. The region is passed
  * in rather than read off the row: the service anchors its query on the region, so
  * every item in a list shares one instance instead of a per-row join.
+ *
+ * The nested `region` is `RegionSummaryDto` — the same class the regions list returns,
+ * so the shape of a region is identical wherever it appears (PHG-010).
  */
 @Exclude()
 export class ProvinceListItemDto {
@@ -26,14 +30,14 @@ export class ProvinceListItemDto {
   readonly nameTl: string;
 
   @Expose()
-  @Type(() => ProvinceRegionDto)
-  readonly region: ProvinceRegionDto;
+  @Type(() => RegionSummaryDto)
+  readonly region: RegionSummaryDto;
 
   constructor(province: Province, region: Region) {
     this.code = province.code;
     this.name = province.name;
-    this.altName = province.altName;
+    this.altName = blankToNull(province.altName);
     this.nameTl = province.nameTl;
-    this.region = new ProvinceRegionDto(region);
+    this.region = new RegionSummaryDto(region);
   }
 }

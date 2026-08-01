@@ -202,6 +202,7 @@ describe('ProvincesService', () => {
         cities: [
           {
             name: 'Buenavista',
+            slug: 'buenavista',
             alt_name: null,
             full_name: 'Buenavista',
             is_capital: false,
@@ -209,6 +210,7 @@ describe('ProvincesService', () => {
           },
           {
             name: 'Butuan',
+            slug: 'butuan',
             alt_name: null,
             full_name: 'Butuan City',
             is_capital: false,
