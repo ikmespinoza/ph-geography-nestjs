@@ -321,6 +321,7 @@ describe('Provinces (e2e)', () => {
         cities: [
           {
             name: 'Buenavista',
+            slug: 'buenavista',
             alt_name: null,
             full_name: 'Buenavista',
             is_capital: false,
@@ -328,6 +329,7 @@ describe('Provinces (e2e)', () => {
           },
           {
             name: 'Butuan',
+            slug: 'butuan',
             alt_name: null,
             full_name: 'Butuan City',
             is_capital: false,
@@ -335,6 +337,7 @@ describe('Provinces (e2e)', () => {
           },
           {
             name: 'Cabadbaran',
+            slug: 'cabadbaran',
             alt_name: null,
             full_name: 'Cabadbaran City',
             is_capital: true,
@@ -358,6 +361,7 @@ describe('Provinces (e2e)', () => {
           'full_name',
           'is_capital',
           'name',
+          'slug',
         ]);
         expect(Object.keys(city.classification).sort()).toEqual(['code', 'description']);
       }

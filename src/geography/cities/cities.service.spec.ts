@@ -160,6 +160,7 @@ describe('CitiesService', () => {
 
       expect(instanceToPlain(city)).toEqual({
         name: 'Tandag',
+        slug: 'tandag',
         alt_name: null,
         full_name: 'Tandag City',
         is_capital: true,
@@ -219,6 +220,7 @@ describe('CitiesService', () => {
       expect(city).toBeInstanceOf(CityDto);
       expect(instanceToPlain(city)).toEqual({
         name: 'Bislig',
+        slug: 'bislig',
         alt_name: null,
         full_name: 'Bislig City',
         is_capital: false,

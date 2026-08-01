@@ -2,7 +2,7 @@ import { instanceToPlain } from 'class-transformer';
 
 import { ResourceNotFoundException } from '@/common/http/resource-not-found.exception';
 import { RegionDetailDto } from '@/geography/regions/dto/region-detail.dto';
-import { RegionListItemDto } from '@/geography/regions/dto/region-list-item.dto';
+import { RegionSummaryDto } from '@/geography/dto/region-summary.dto';
 import { RegionsService } from '@/geography/regions/regions.service';
 import type { Province, Region } from '@/generated/prisma/client';
 import type { PrismaService } from '@/persistence/prisma.service';
@@ -80,7 +80,7 @@ describe('RegionsService', () => {
       const regions = await service.findAll();
 
       expect(regions).toHaveLength(2);
-      expect(regions.every((region) => region instanceof RegionListItemDto)).toBe(true);
+      expect(regions.every((region) => region instanceof RegionSummaryDto)).toBe(true);
       expect(regions.map((region) => region.code)).toEqual(['PH-05', 'PH-13']);
     });
 

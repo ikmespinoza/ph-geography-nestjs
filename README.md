@@ -42,7 +42,8 @@ All endpoints are read-only `GET`s under `/api/v1`.
 | GET    | `/api/docs`                                                   | —                           | OpenAPI / Swagger UI                                 |
 
 `{region}` and `{province}` are **ISO 3166 codes** (e.g. `PH-13`, `PH-AGN`); `{city}` is a `name` slug unique
-within its province. Only `/api/v1/health` is implemented today; the resource routes are in progress.
+within its province, returned as the city's `slug` field so you never have to derive it yourself. All
+identifiers match **exactly** — `/regions/ph-13` is a `404`, not a redirect.
 
 ### API conventions
 
@@ -53,14 +54,64 @@ response in `{ success, response, code, memory_usage }` and answered **HTTP 200 
 
 ```jsonc
 // GET /api/v1/regions/PH-13  →  200
-{ "code": "PH-13", "name": "Caraga", "name_tl": "Rehiyon ng Caraga", "alt_name": "Region XIII" }
+{
+  "code": "PH-13",
+  "name": "Caraga",
+  "name_tl": "Rehiyon ng Karaga",
+  "acronym": "XIII",
+  "provinces": [{ "code": "PH-AGN", "name": "Agusan del Norte", "alt_name": null, "name_tl": "Hilagang Agusan" }]
+}
 ```
 
 - **Wire fields are `snake_case`** (`name_tl`, `alt_name`, `full_name`, `is_capital`) even though the
   TypeScript models are camelCase — response DTOs map the two with `@Expose({ name: 'name_tl' })`.
 - Response DTOs are **opt-in**: `@Exclude()` on the class, `@Expose()` per field. Internal columns (`id`,
   foreign keys, `created_at`/`updated_at`) never reach the wire unless a DTO asks for them.
+- Collections have a **defined order** — regions, provinces and cities are all sorted by `name`, including
+  where they are nested inside a parent.
 - `memory_usage` is gone — it was a PHP artifact with no meaning here.
+
+### Response shapes
+
+Four canonical shapes describe every payload. Each is one class in
+[`src/geography/dto/`](src/geography/dto/), so a nested region looks the same whether you found it under a
+province or listed it directly — there is no "the nested one is missing a field" case.
+
+| Shape | Fields |
+| ----- | ------ |
+| **region** | `code`, `name`, `name_tl`, `acronym` |
+| **province** | `code`, `name`, `alt_name`, `name_tl` |
+| **city** | `name`, `slug`, `alt_name`, `full_name`, `is_capital`, `classification` |
+| **classification** | `code`, `description` |
+
+Endpoints are those shapes plus their relations — a list is shallow, a detail adds one level of children:
+
+| Endpoint | Returns |
+| -------- | ------- |
+| `GET /regions` | `[ region ]` |
+| `GET /regions/{region}` | `region` + `provinces: [ province ]` |
+| `GET /regions/{region}/provinces` | `[ province + region ]` |
+| `GET /regions/{region}/provinces/{province}` | `province` + `region` + `cities: [ city ]` |
+| `GET …/cities` | `[ city + province ]` |
+| `GET …/cities/{city}` | `city` + `province` |
+
+Notes on individual fields:
+
+- **`alt_name`** is a province's or city's former name. It is always present, and `null` when there isn't one
+  — never omitted, never `""`.
+- **`is_capital`** is a real JSON boolean.
+- **`slug`** is how a city is addressed in a URL, derived from `name`: accents are stripped, everything is
+  lowercased, and each run of non-alphanumeric characters becomes one `-` (`Peñablanca` → `penablanca`,
+  `Sto. Niño` → `sto-nino`). It is computed, not stored.
+
+The exact payload of all six endpoints is pinned in
+[`test/__snapshots__/serialization.e2e-spec.ts.snap`](test/__snapshots__/serialization.e2e-spec.ts.snap) —
+that snapshot is the contract, and `pnpm test:e2e` fails if a response drifts from it.
+
+**Differences from the legacy Lumen API.** The shapes above match its documented payloads field-for-field,
+with three deliberate additions: a province's nested `cities` carry their `classification` (the old app
+documented it but never loaded the relation), a city's `province` is populated (the old resource read a
+relation that did not exist), and `slug` is new.
 
 **Errors** — [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json`, with the
 status code telling the truth:

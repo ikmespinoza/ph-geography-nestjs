@@ -1,7 +1,7 @@
 import { Controller, Get, Param } from '@nestjs/common';
 
+import { RegionSummaryDto } from '@/geography/dto/region-summary.dto';
 import { RegionDetailDto } from '@/geography/regions/dto/region-detail.dto';
-import { RegionListItemDto } from '@/geography/regions/dto/region-list-item.dto';
 import { RegionsService } from '@/geography/regions/regions.service';
 
 /**
@@ -14,7 +14,7 @@ export class RegionsController {
   constructor(private readonly regionsService: RegionsService) {}
 
   @Get()
-  findAll(): Promise<RegionListItemDto[]> {
+  findAll(): Promise<RegionSummaryDto[]> {
     return this.regionsService.findAll();
   }
 

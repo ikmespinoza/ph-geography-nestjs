@@ -201,6 +201,7 @@ function findUniqueRegion(args: RegionFindUniqueArgs): Promise<unknown> {
 
 const BISLIG_PAYLOAD = {
   name: 'Bislig',
+  slug: 'bislig',
   alt_name: null,
   full_name: 'Bislig City',
   is_capital: false,
@@ -252,6 +253,7 @@ describe('Cities (e2e)', () => {
       expect(response.body).toEqual([
         {
           name: 'Barobo',
+          slug: 'barobo',
           alt_name: null,
           full_name: 'Barobo',
           is_capital: false,
@@ -261,6 +263,7 @@ describe('Cities (e2e)', () => {
         BISLIG_PAYLOAD,
         {
           name: 'Tandag',
+          slug: 'tandag',
           alt_name: null,
           full_name: 'Tandag City',
           is_capital: true,
@@ -285,6 +288,7 @@ describe('Cities (e2e)', () => {
           'is_capital',
           'name',
           'province',
+          'slug',
         ]);
         expect(Object.keys(city.classification).sort()).toEqual(['code', 'description']);
         expect(Object.keys(city.province).sort()).toEqual(['alt_name', 'code', 'name', 'name_tl']);
