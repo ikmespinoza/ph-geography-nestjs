@@ -4,8 +4,9 @@ import type { Classification } from '@/generated/prisma/client';
 
 /**
  * An LGU classification (`Mun`, `CC`, `ICC`, `HUC`) as it appears nested inside a
- * city. Lives with the province DTOs because that is what nests it today; PHG-009
- * decides whether the cities module shares this shape or needs its own.
+ * city — both in a city response and in the cities of a province detail. One shape,
+ * one owner: it describes a city, so it lives with the cities module (it shipped
+ * under `provinces/dto/` in PHG-008 only because provinces landed first).
  */
 @Exclude()
 export class CityClassificationDto {
