@@ -28,6 +28,14 @@ export const envSchema = z.object({
     .string()
     .min(1)
     .default('ph-geography-api/1.0 (+https://github.com/ikmespinoza/ph-geography-nestjs)'),
+  INGESTION_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(2),
+  INGESTION_RETRY_BACKOFF_MS: z.coerce.number().int().positive().default(500),
+  // The CLI (`pnpm ingest`) and the tests boot the same AppModule; this keeps the
+  // cron from arming in those contexts without a second module graph.
+  INGESTION_ENABLE_SCHEDULE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
 
   SOURCE_ISO3166_REGION_URL: httpUrl.default('https://en.wikipedia.org/wiki/ISO_3166-2:PH'),
   SOURCE_ISO3166_CITY_URL: httpUrl.default(
