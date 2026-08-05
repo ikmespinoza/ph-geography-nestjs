@@ -1,3 +1,5 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { ChangeDetectionService } from '@/ingestion/change-detection/change-detection.service';
@@ -47,6 +49,7 @@ export class IngestionService {
     private readonly cityWriter: CityWriter,
     private readonly runLock: RunLock,
     @Inject(GEO_SOURCES) private readonly sources: readonly GeoSource[],
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   /** Run every configured source once. Never throws — failures land in the report. */
@@ -88,9 +91,40 @@ export class IngestionService {
       this.logger.log(
         `Ingestion ${ok ? 'completed' : 'FAILED'} in ${report.durationMs}ms: ${summarize(resources)}`,
       );
+      await this.invalidateReadCache(resources);
       return report;
     } finally {
       await lock.release();
+    }
+  }
+
+  /**
+   * Drop the read cache so the new data is served immediately (PHG-015).
+   *
+   * Guarded on something having actually changed: the nightly run is normally a
+   * no-op — a forced re-run of the real dataset reports 0 created, 0 updated — and
+   * flushing a warm cache every night for nothing is a self-inflicted latency spike.
+   *
+   * This is the one place the write side touches a read-side concern. It stays on the
+   * right side of the seam: `ingestion/` still never *serves* a read, it only tells a
+   * cross-cutting cache that what it holds is stale. A failure here must not fail the
+   * run — the data is written, and the worst case is one TTL of staleness.
+   */
+  private async invalidateReadCache(resources: readonly ResourceReport[]): Promise<void> {
+    const changed = resources.reduce(
+      (total, resource) => total + resource.created + resource.updated,
+      0,
+    );
+
+    if (changed === 0) {
+      return;
+    }
+
+    try {
+      await this.cache.clear();
+      this.logger.log(`Read cache invalidated after ${changed} created/updated rows`);
+    } catch (error) {
+      this.logger.warn(`Failed to invalidate the read cache: ${describe(error)}`);
     }
   }
 

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
+import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
@@ -19,9 +19,10 @@ export const INGESTION_CRON_JOB = 'ingestion';
  * run from the CLI, with no scheduler in the graph at all.
  */
 @Injectable()
-export class IngestionScheduler implements OnModuleInit {
+export class IngestionScheduler implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(IngestionScheduler.name);
   private readonly config: IngestionConfig;
+  private shuttingDown = false;
 
   constructor(
     configService: ConfigService,
@@ -47,10 +48,24 @@ export class IngestionScheduler implements OnModuleInit {
   }
 
   /**
+   * Don't begin a scrape the process is about to be killed in the middle of. A run
+   * already in flight is left to finish — `app.close()` waits for it, and its
+   * advisory lock releases with the session either way.
+   */
+  onApplicationShutdown(): void {
+    this.shuttingDown = true;
+  }
+
+  /**
    * The cron callback. Errors are already folded into the run report, so this
    * only has to make sure nothing escapes into an unhandled rejection.
    */
   private async runScheduled(): Promise<void> {
+    if (this.shuttingDown) {
+      this.logger.warn('Shutdown in progress — skipping the scheduled ingestion run');
+      return;
+    }
+
     try {
       const report = await this.ingestionService.run();
       if (!report.ok) {

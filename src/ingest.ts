@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Logger as PinoLogger } from 'nestjs-pino';
 
 import { AppModule } from '@/app.module';
 import { IngestionService } from '@/ingestion/ingestion.service';
@@ -23,10 +24,10 @@ async function bootstrap(): Promise<void> {
   // and out of the modules, which still read it only through the config layer.
   process.env.INGESTION_ENABLE_SCHEDULE = 'false';
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    // The report is the output; Nest's own boot chatter is not.
-    logger: ['log', 'warn', 'error'],
-  });
+  // Buffered, then handed to pino — otherwise the run report would print through
+  // Nest's console logger while the pipeline it describes logs structured JSON.
+  const app = await NestFactory.createApplicationContext(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
   app.enableShutdownHooks();
 
   try {

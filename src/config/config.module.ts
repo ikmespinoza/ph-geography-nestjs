@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
 import { appConfig } from '@/config/app.config';
+import { cacheConfig } from '@/config/cache.config';
 import { databaseConfig } from '@/config/database.config';
 import { validateEnv } from '@/config/env.validation';
+import { httpConfig } from '@/config/http.config';
 import { ingestionConfig } from '@/config/ingestion.config';
 import { sourcesConfig } from '@/config/sources.config';
 
@@ -18,7 +20,7 @@ import { sourcesConfig } from '@/config/sources.config';
       isGlobal: true,
       cache: true,
       validate: validateEnv,
-      load: [appConfig, databaseConfig, ingestionConfig, sourcesConfig],
+      load: [appConfig, cacheConfig, databaseConfig, httpConfig, ingestionConfig, sourcesConfig],
     }),
   ],
 })

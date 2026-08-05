@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
 import type { Classification } from '@/generated/prisma/client';
@@ -12,9 +13,16 @@ import type { Classification } from '@/generated/prisma/client';
  */
 @Exclude()
 export class ClassificationDto {
+  @ApiProperty({
+    description:
+      'LGU classification code: `Mun` (municipality), `CC` (component city), `ICC` (independent component city) or `HUC` (highly urbanized city).',
+    enum: ['Mun', 'CC', 'ICC', 'HUC'],
+    example: 'CC',
+  })
   @Expose()
   readonly code: string;
 
+  @ApiProperty({ description: 'Human-readable classification.', example: 'Component City' })
   @Expose()
   readonly description: string;
 

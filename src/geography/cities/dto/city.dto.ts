@@ -1,7 +1,8 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 
 import { blankToNull } from '@/common/text/nullable.util';
-import { slugify } from '@/common/text/slug.util';
+import { SLUG_RULE_DESCRIPTION, slugify } from '@/common/text/slug.util';
 import { ClassificationDto } from '@/geography/dto/classification.dto';
 import { ProvinceSummaryDto } from '@/geography/dto/province-summary.dto';
 import type { City, Classification, Province } from '@/generated/prisma/client';
@@ -22,23 +23,47 @@ import type { City, Classification, Province } from '@/generated/prisma/client';
  */
 @Exclude()
 export class CityDto {
+  @ApiProperty({ example: 'Bislig' })
   @Expose()
   readonly name: string;
 
   /** The identifier this city is addressed by (OD-15) — see `CitySummaryDto.slug`. */
+  @ApiProperty({
+    description: `The path identifier for this city. ${SLUG_RULE_DESCRIPTION}`,
+    example: 'bislig',
+  })
   @Expose()
   readonly slug: string;
 
+  @ApiProperty({
+    name: 'alt_name',
+    type: String,
+    nullable: true,
+    description: 'Former or local-variant name; `null` when the city has none.',
+    example: null,
+  })
   @Expose({ name: 'alt_name' })
   readonly altName: string | null;
 
+  @ApiProperty({
+    name: 'full_name',
+    description:
+      'The name as officially written — a city classification appends ` City` unless the name already carries it; a municipality keeps its name unchanged.',
+    example: 'Bislig City',
+  })
   @Expose({ name: 'full_name' })
   readonly fullName: string;
 
   /** A real JSON boolean — the legacy needed a `getIsCapitalAttribute` cast for this. */
+  @ApiProperty({
+    name: 'is_capital',
+    description: 'Whether this LGU is the de jure capital of its province.',
+    example: false,
+  })
   @Expose({ name: 'is_capital' })
   readonly isCapital: boolean;
 
+  @ApiProperty({ type: () => ClassificationDto })
   @Expose()
   @Type(() => ClassificationDto)
   readonly classification: ClassificationDto;
@@ -49,6 +74,10 @@ export class CityDto {
    * key came back empty. Here it is the singular province, populated from the same
    * region-anchored read that found the city.
    */
+  @ApiProperty({
+    type: () => ProvinceSummaryDto,
+    description: 'The province this city belongs to.',
+  })
   @Expose()
   @Type(() => ProvinceSummaryDto)
   readonly province: ProvinceSummaryDto;

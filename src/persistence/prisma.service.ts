@@ -38,12 +38,4 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
   }
-
-  /**
-   * Lightweight connectivity probe (`SELECT 1`). Stub for the PHG-017 Terminus
-   * health indicator — throws if the database is unreachable.
-   */
-  async pingDatabase(): Promise<void> {
-    await this.$queryRaw`SELECT 1`;
-  }
 }

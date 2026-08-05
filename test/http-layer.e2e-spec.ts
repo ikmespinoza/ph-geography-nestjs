@@ -1,3 +1,4 @@
+import { CacheModule } from '@nestjs/cache-manager';
 import { Controller, Get, Logger, Module, Param, Query, VersioningType } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -9,6 +10,7 @@ import request from 'supertest';
 import { CommonModule } from '@/common/common.module';
 import { PROBLEM_JSON_CONTENT_TYPE } from '@/common/http/problem-details';
 import { ResourceNotFoundException } from '@/common/http/resource-not-found.exception';
+import { ConfigModule } from '@/config/config.module';
 
 /**
  * PHG-006 acceptance. A throwaway resource stands in for the domain controllers that
@@ -77,7 +79,16 @@ class SampleRegionsController {
   }
 }
 
-@Module({ imports: [CommonModule], controllers: [SampleRegionsController] })
+/**
+ * `CommonModule` grew two dependencies in M4 — the throttler reads `ConfigService`
+ * and the cache interceptor needs `CACHE_MANAGER` — so the harness now supplies the
+ * same two globals `AppModule` does. Caching is off here (`setup-env.ts`), which is
+ * what this suite wants: it asserts the serializer's output, not the cache's.
+ */
+@Module({
+  imports: [ConfigModule, CacheModule.register({ isGlobal: true }), CommonModule],
+  controllers: [SampleRegionsController],
+})
 class SampleModule {}
 
 describe('Common HTTP layer (e2e)', () => {
