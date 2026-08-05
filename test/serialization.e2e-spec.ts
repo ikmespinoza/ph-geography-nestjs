@@ -319,10 +319,19 @@ describe('Serialization contract (e2e)', () => {
         request(app.getHttpServer()).get(ROUTES.provinceList).expect(200),
       ]);
 
-      const listed = (list.body as Record<string, unknown>[])[0];
-      const nested = (provinces.body as { region: Record<string, unknown> }[])[0].region;
+      const listedRegions = list.body as Record<string, unknown>[];
+      const listedProvinces = provinces.body as { region: Record<string, unknown> }[];
 
-      expect(nested).toEqual(listed);
+      // Both are asserted non-empty first: under `noUncheckedIndexedAccess` the
+      // element type includes `undefined`, and comparing two undefineds would pass
+      // vacuously on an empty response — the one way this test could lie.
+      expect(listedRegions.length).toBeGreaterThan(0);
+      expect(listedProvinces.length).toBeGreaterThan(0);
+
+      const [listed] = listedRegions;
+      const [firstProvince] = listedProvinces;
+
+      expect(firstProvince?.region).toEqual(listed);
     });
 
     it('serves the same province object inside a region and inside a city', async () => {

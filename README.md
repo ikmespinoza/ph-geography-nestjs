@@ -1,5 +1,9 @@
 # PH Geography API
 
+[![CI](https://github.com/ikmespinoza/ph-geography-nestjs/actions/workflows/ci.yml/badge.svg)](https://github.com/ikmespinoza/ph-geography-nestjs/actions/workflows/ci.yml)
+[![Node](https://img.shields.io/badge/node-20%20LTS-brightgreen)](.nvmrc)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
 REST API for Philippine geographic reference data — **regions → provinces → cities/municipalities** — with a
 self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (Prisma)**.
 
@@ -10,6 +14,41 @@ self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (P
 - **PostgreSQL 16** (local via Docker) — required once the data layer lands.
 
 ## Usage
+
+### Run it with Docker
+
+The whole stack — database, schema, seed and API — from a clean checkout:
+
+```bash
+cp .env.example .env      # Compose reads it for ${DB_PORT}/${APP_PORT} only
+docker compose up         # db → migrate (schema + seed) → app
+docker compose exec app node dist/ingest.js    # first scrape → ~11 s, needs network
+```
+
+→ **http://localhost:3000/api/v1**, docs at `/api/docs`, health at `/api/v1/health`.
+
+- `docker compose up -d db` still starts **only** the database, which is the flow the local
+  `pnpm dev` setup below uses. Nothing about it changed.
+- The **`migrate`** service is a one-shot job that applies migrations and seeds the classifications,
+  then exits; the API waits for it to finish. Both steps are idempotent, so `up` is safe to re-run.
+  It is built from its own image stage because the served image deliberately has no Prisma CLI or
+  ts-node.
+- **The first ingestion is a separate command, on purpose.** Wiring a live 3 MB scrape into `up`
+  would make starting the stack fail on an offline machine. It is `node dist/ingest.js` rather than
+  `pnpm ingest` — the compiled entry point is already in the image. Add `--force` to re-process
+  pages that have not changed.
+- **`/api/v1/health/ready` answers 503 until that first ingestion finishes** — an empty geography
+  tree is genuinely not ready to serve. The container's own healthcheck deliberately probes
+  *liveness* (`/api/v1/health`) instead, so a fresh stack cannot restart-loop before anyone has had
+  a chance to populate it.
+- Ingestion run from `exec` is a **separate process**, so it cannot invalidate the running server's
+  in-memory cache; reads can be up to `CACHE_TTL_MS` (60 s) stale afterwards. The scheduled in-process
+  run has no such gap.
+
+The image is a multi-stage build (`Dockerfile`): dependencies + `prisma generate` → compile → a
+runtime stage carrying only `dist/` and production dependencies, running as the unprivileged `node`
+user. It is **~540 MB** on disk, most of it `@prisma/client` and the Prisma CLI that pnpm installs
+as one of its peers.
 
 ### Installation Instructions
 
@@ -187,6 +226,38 @@ region-anchored scoping and nested `include`s are proven against SQL rather than
 Standalone modular monolith. `src/geography/` **reads** the DB and serves `/api/v1`; `src/ingestion/` **writes**
 it (scraper on a schedule). Shared plumbing lives in `src/common/`, `src/config/`, `src/persistence/`. Layering
 is `controller → service → repository (Prisma)`. The in-repo engineering rules live in `.claude/rules/`.
+
+## Deployment
+
+The service is one container plus a Postgres 16. Any host that can do these five things is enough — no
+Kubernetes, no IaC:
+
+1. run an OCI container built from the `Dockerfile` (`--target runtime`);
+2. provide PostgreSQL 16;
+3. run a **one-off release command before the app starts** — this is where the `migrator` image stage runs
+   `pnpm db:migrate && pnpm db:seed`. A platform that cannot run a pre-deploy job would force the Prisma
+   CLI and ts-node into the served image;
+4. inject environment variables (`DATABASE_URL` at minimum — the config layer validates the whole
+   environment at boot and exits non-zero with a readable message if anything is missing or malformed);
+5. run **exactly one instance** (below).
+
+**Single replica, deliberately.** The response cache is in-memory and the ingestion cron arms in every
+process. A second replica would hold a second, independently-stale cache, and would arm a second cron — a
+Postgres advisory lock makes the concurrent run *safe* (the loser bails in ~24 ms) but not useful. Scaling
+out means moving the cache to a shared store and electing a single scheduler; neither is built.
+
+**Probes.** Point the platform's restart probe at `/api/v1/health` (liveness — touches nothing) and its
+traffic probe at `/api/v1/health/ready` (database ping + "ingestion has run at least once"). Readiness
+answers 503 until the first ingestion completes, which is why it must not drive restarts.
+
+**First run.** After the first deploy the database is migrated and seeded but empty of geography; run
+`node dist/ingest.js` once in the container. After that the cron keeps it current (`INGESTION_SCHEDULE_CRON`,
+default 03:00 daily), skipping any source page that has not changed since it was last processed.
+
+**Rollback** is redeploying the previous image tag. Migrations are additive and the ingestion is an
+idempotent upsert, so an older image serves the same data; nothing needs to be un-migrated.
+
+Coming from the old Lumen API? See [MIGRATION.md](./MIGRATION.md).
 
 ## License
 
