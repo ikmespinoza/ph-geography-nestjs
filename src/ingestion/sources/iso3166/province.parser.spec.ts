@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { ScrapeError } from '@/ingestion/scraper-core/scrape-error';
 import { parseProvinces } from '@/ingestion/sources/iso3166/province.parser';
 import { parseRegions } from '@/ingestion/sources/iso3166/region.parser';
 
@@ -82,5 +83,66 @@ describe('parseProvinces', () => {
 
   it('picks the provinces table, not the regions table above it', () => {
     expect(rows.some((row) => row.code === 'PH-13')).toBe(false);
+  });
+
+  /**
+   * The per-row guards, on minimal pages rather than surgical edits to the real
+   * markup — see the equivalent block in `region.parser.spec.ts`. `maxRejectionRatio`
+   * is 0 for this table, so any rejection is a thrown `ScrapeError`: 82 provinces is
+   * few enough that one unreadable row already means the layout moved.
+   */
+  describe('row-shape rejection', () => {
+    const page = (rows: string): string => `<html><body>
+      <div class="mw-heading mw-heading3"><h3 id="Provinces">Provinces</h3></div>
+      <table class="wikitable">
+        <tr><th>Code</th><th>Subdivision name (en)</th><th>Subdivision name (tl)</th><th>In region</th></tr>
+        ${rows}
+      </table>
+    </body></html>`;
+
+    const row = (code: string, name: string, nameTl: string, region: string): string =>
+      `<tr><td>${code}</td><td>${name}</td><td>${nameTl}</td><td>${region}</td></tr>`;
+
+    it('reads the minimal page, so the rejection cases below isolate one defect', () => {
+      const { rows: parsed } = parseProvinces(
+        page(row('PH-AGN', 'Agusan del Norte', 'Hilagang Agusan', '13')),
+      );
+
+      expect(parsed).toEqual([
+        {
+          code: 'PH-AGN',
+          name: 'Agusan del Norte',
+          altName: null,
+          nameTl: 'Hilagang Agusan',
+          regionCode: 'PH-13',
+        },
+      ]);
+    });
+
+    it('rejects a code that is not an ISO province code', () => {
+      // Province codes are letters (PH-AGN); a numeric suffix is a region code, so
+      // this is what a column shift or a copied regions table looks like.
+      const html = page(row('PH-13', 'Caraga', 'Rehiyon ng Karaga', '13'));
+
+      expect(() => parseProvinces(html)).toThrow(ScrapeError);
+      expect(() => parseProvinces(html)).toThrow(/is not an ISO province code/);
+    });
+
+    it('rejects an unreadable region column rather than inventing a PH- code', () => {
+      // `PH-${suffix}` would otherwise happily produce `PH-` + junk and orphan the
+      // province against a region that does not exist.
+      const html = page(row('PH-AGN', 'Agusan del Norte', 'Hilagang Agusan', 'Caraga (XIII)'));
+
+      expect(() => parseProvinces(html)).toThrow(/has an unreadable region column/);
+    });
+
+    it('rejects a province whose name cell is empty', () => {
+      // The code and region columns can both be well-formed while the name is not;
+      // a blank here would otherwise reach the database and orphan the province's
+      // cities, which match on name.
+      const html = page(row('PH-AGN', '', 'Hilagang Agusan', '13'));
+
+      expect(() => parseProvinces(html)).toThrow(/has an empty name/);
+    });
   });
 });

@@ -64,4 +64,37 @@ describe('parseRegions', () => {
 
     expect(() => parseRegions(rewritten)).toThrow(/rejected 17 of 17 rows/);
   });
+
+  /**
+   * The per-row guards, on minimal pages rather than surgical edits to 3 MB of real
+   * markup: a single deliberately-broken row is what is under test, and a synthetic
+   * table shows it in one screen. The fixture-driven cases above remain the proof
+   * that the parser reads the page as it actually ships.
+   */
+  describe('row-shape rejection', () => {
+    const page = (rows: string): string => `<html><body>
+      <div class="mw-heading mw-heading3"><h3 id="Regions">Regions</h3></div>
+      <table class="wikitable">
+        <tr><th>Code</th><th>Subdivision name (en)</th><th>Subdivision name (tl)</th><th>Roman numeral or acronym</th></tr>
+        ${rows}
+      </table>
+    </body></html>`;
+
+    const GOOD = '<tr><td>PH-13</td><td>Caraga</td><td>Rehiyon ng Karaga</td><td>XIII</td></tr>';
+
+    it('reads the minimal page, so the rejection cases below isolate one defect', () => {
+      expect(parseRegions(page(GOOD)).rows).toHaveLength(1);
+    });
+
+    it.each([
+      ['name', '<tr><td>PH-13</td><td></td><td>Rehiyon ng Karaga</td><td>XIII</td></tr>'],
+      ['name_tl', '<tr><td>PH-13</td><td>Caraga</td><td></td><td>XIII</td></tr>'],
+      ['acronym', '<tr><td>PH-13</td><td>Caraga</td><td>Rehiyon ng Karaga</td><td></td></tr>'],
+    ])('rejects a row whose %s cell is empty rather than storing a blank', (_column, row) => {
+      // A blank here would reach the database as an empty string on the wire —
+      // the wart PHG-010 removed from `alt_name`, reintroduced by ingestion.
+      expect(() => parseRegions(page(row))).toThrow(ScrapeError);
+      expect(() => parseRegions(page(row))).toThrow(/has an empty name, name_tl or acronym/);
+    });
+  });
 });

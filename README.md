@@ -27,7 +27,7 @@ self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (P
    **`/api/docs`**, health at `/api/v1/health`.
 
 **Common scripts:** `pnpm dev` · `pnpm build` · `pnpm start:prod` · `pnpm lint` · `pnpm format` · `pnpm test` ·
-`pnpm test:e2e`.
+`pnpm test:cov` · `pnpm test:e2e` (see [Testing](#testing)).
 
 ### Routes
 
@@ -115,7 +115,8 @@ that snapshot is the contract, and `pnpm test:e2e` fails if a response drifts fr
 **Differences from the legacy Lumen API.** The shapes above match its documented payloads field-for-field,
 with three deliberate additions: a province's nested `cities` carry their `classification` (the old app
 documented it but never loaded the relation), a city's `province` is populated (the old resource read a
-relation that did not exist), and `slug` is new.
+relation that did not exist), and `slug` is new. Every difference — envelope, status codes, identifiers,
+dataset counts — is enumerated and scored in the project's parity matrix, with zero regressions.
 
 **Errors** — [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json`, with the
 status code telling the truth:
@@ -140,6 +141,46 @@ status code telling the truth:
 Requests are validated by a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`). On any
 endpoint that declares a query DTO, an undeclared query param is a `400` rather than a silent no-op; endpoints
 that take no query parameters at all ignore extras.
+
+## Testing
+
+```bash
+pnpm test        # unit — services, scrapers (against saved HTML fixtures), utils
+pnpm test:cov    # the same, with coverage; fails below the thresholds in jest.config.ts
+pnpm test:e2e    # endpoints, ingestion and schema — needs the test database below
+```
+
+Unit tests need nothing but `pnpm install`: scrapers run **offline** against the committed fixtures in
+[`test/fixtures/`](test/fixtures/), and services run against a mocked Prisma client. Coverage floors are set
+per area in [`jest.config.ts`](./jest.config.ts), which also documents why bootstrap and DI-wiring files are
+excluded from the denominator.
+
+### The test database
+
+`pnpm test:e2e` **truncates the geography tables and re-seeds them**, so it needs a database of its own —
+never the one you develop against. Create it once:
+
+```bash
+docker compose up -d db
+docker exec ph-geography-db psql -U ph_geography -d postgres -c "CREATE DATABASE ph_geography_test;"
+TEST_DATABASE_URL=postgresql://ph_geography:ph_geography@localhost:5432/ph_geography_test
+DATABASE_URL=$TEST_DATABASE_URL pnpm db:migrate
+```
+
+Then set `TEST_DATABASE_URL` in your `.env` (see `.env.example`). It is a **test-harness variable**: it is
+read by [`test/setup-env.ts`](test/setup-env.ts), never by `src/config/`, and the app itself only ever sees
+`DATABASE_URL`. A DB-backed spec run without it fails immediately with setup instructions rather than
+falling back to your development data.
+
+The suite runs `--runInBand`: three specs share that database, and truncation is not safe in parallel.
+
+### What the e2e suite covers
+
+Most specs boot the real `AppModule` over a stubbed `PrismaService` — fast, deterministic, and enough to pin
+the wire contract. [`geography-db.e2e-spec.ts`](test/geography-db.e2e-spec.ts) is the exception: it stubs only
+the HTTP fetcher, replays the committed fixtures through the **real ingestion pipeline** (17 regions, 86
+provinces, 1,642 cities) and then exercises all six endpoints against **real Postgres** — so ordering,
+region-anchored scoping and nested `include`s are proven against SQL rather than against a mock's arguments.
 
 ## Architecture
 
