@@ -1,4 +1,3 @@
-import { config as loadDotenv } from 'dotenv';
 import request from 'supertest';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -11,10 +10,12 @@ import { HttpFetcher } from '@/ingestion/scraper-core/http-fetcher';
 import { PrismaService } from '@/persistence/prisma.service';
 
 import { seedClassifications } from '../prisma/seed';
+import { requireTestDatabaseUrl } from './support/test-database';
 
-// A DB-backed run of the whole pipeline, so it needs the real database (dev DB on
-// 5433) rather than the dummy URL setup-env.ts provides for the DB-free specs.
-process.env.DATABASE_URL = loadDotenv().parsed?.DATABASE_URL ?? process.env.DATABASE_URL;
+// A DB-backed run of the whole pipeline, so it needs a real database — the suite's
+// own (PHG-019), not the one you develop against, which is where this spec used to
+// write its PH-Z* rows.
+process.env.DATABASE_URL = requireTestDatabaseUrl();
 // Never arm the cron inside a test process.
 process.env.INGESTION_ENABLE_SCHEDULE = 'false';
 

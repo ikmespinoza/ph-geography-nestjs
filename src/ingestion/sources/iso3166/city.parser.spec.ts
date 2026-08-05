@@ -144,4 +144,51 @@ describe('parseCities', () => {
 
     expect(() => parseCities(withoutTables)).toThrow(/No table matching/);
   });
+
+  /**
+   * The per-row guards, on minimal pages rather than surgical edits to 3 MB of real
+   * markup — see the equivalent block in `region.parser.spec.ts`. Unlike the other
+   * two tables this one tolerates a 2 % rejection ratio, but a two-row page allows
+   * none, so each defect surfaces as a thrown `ScrapeError` naming its reason.
+   */
+  describe('row-shape rejection', () => {
+    const page = (rows: string): string => `<html><body>
+      <table class="wikitable">
+        <tr><th>City or municipality</th><th>Population</th><th>Area</th><th>PD</th><th>Brgy.</th><th>Class</th><th>Province</th></tr>
+        ${rows}
+      </table>
+    </body></html>`;
+
+    const row = (name: string, cls: string, province: string): string =>
+      `<tr><th scope="row">${name}</th><td>1</td><td>1</td><td>1</td><td>1</td><td>${cls}</td><td>${province}</td></tr>`;
+
+    const GOOD = row('Cabadbaran', 'CC', 'Agusan del Norte');
+
+    it('reads the minimal page, so the rejection cases below isolate one defect', () => {
+      expect(parseCities(page(GOOD)).rows).toHaveLength(1);
+    });
+
+    it('rejects a row whose name cell is empty', () => {
+      const html = page(`${GOOD}${row('', 'Mun', 'Agusan del Norte')}`);
+
+      expect(() => parseCities(html)).toThrow(ScrapeError);
+      expect(() => parseCities(html)).toThrow(/the name cell is empty/);
+    });
+
+    it('rejects a row whose province cell is empty rather than orphaning the LGU', () => {
+      const html = page(`${GOOD}${row('Nasipit', 'Mun', '')}`);
+
+      expect(() => parseCities(html)).toThrow(/has an empty province cell/);
+    });
+
+    it('rejects an NCR LGU that matches no district instead of silently dropping it', () => {
+      // OD-7's failure mode in miniature: the source files all 17 NCR LGUs under one
+      // `Metro Manila` cell naming no district, so the city→district map is static.
+      // A new or renamed NCR LGU must fail loudly — dropping it is exactly what the
+      // legacy did to all 17.
+      const html = page(`${GOOD}${row('Newly Chartered City', 'CC', 'Metro Manila')}`);
+
+      expect(() => parseCities(html)).toThrow(/matches no known NCR district/);
+    });
+  });
 });

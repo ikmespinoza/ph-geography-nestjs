@@ -1,16 +1,15 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { config as loadDotenv } from 'dotenv';
 
 import { CLASSIFICATIONS } from '@/config/constants';
 import { PrismaClient } from '@/generated/prisma/client';
 
 import { seedClassifications } from '../prisma/seed';
+import { requireTestDatabaseUrl } from './support/test-database';
 
-// DB-integration tests for the PHG-004 schema + seed. These need a live database,
-// so resolve the real connection string from `.env` (dev DB on 5433) — bypassing
-// the dummy URL that setup-env.ts sets for the DB-free liveness e2e — and fall back
-// to an externally-provided DATABASE_URL (CI).
-const databaseUrl = loadDotenv().parsed?.DATABASE_URL ?? process.env.DATABASE_URL;
+// DB-integration tests for the PHG-004 schema + seed. These need a live database —
+// the suite's own (PHG-019), not the one you develop against, which is where this
+// spec used to write.
+const databaseUrl = requireTestDatabaseUrl();
 
 const SEEDED_CODES = CLASSIFICATIONS.map((c) => c.code);
 
