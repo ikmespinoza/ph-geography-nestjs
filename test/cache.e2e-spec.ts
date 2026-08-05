@@ -208,8 +208,13 @@ describe('Caching (e2e)', () => {
      */
     it('answers 304 to a conditional request carrying the returned ETag', async () => {
       const first = await request(app.getHttpServer()).get('/api/v1/regions').expect(200);
+      // Asserted with a type guard rather than `toBeDefined()`: the header is typed
+      // `string | undefined`, and `.set()` takes a string — so the check has to
+      // narrow, not merely assert, or the next line does not compile.
       const etag = first.headers.etag;
-      expect(etag).toBeDefined();
+      if (typeof etag !== 'string') {
+        throw new Error(`expected an ETag on the first response, got ${String(etag)}`);
+      }
 
       const conditional = await request(app.getHttpServer())
         .get('/api/v1/regions')

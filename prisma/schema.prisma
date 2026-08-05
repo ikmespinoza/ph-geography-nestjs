@@ -15,9 +15,21 @@
 //    natural key, no delete handling" (rows absent from the source are reported,
 //    not removed).
 
+// Both options below are stated explicitly rather than inferred. Left to infer, the
+// generator emitted an ESM client (`import.meta.url`) with `.ts` import specifiers,
+// which tsc copied verbatim into dist/ next to its own `exports.__esModule` — a
+// hybrid module Node 20 refuses to load, and a `require('./internal/class.ts')` that
+// resolves to nothing once compiled. It ran only on the Node 24 a developer happened
+// to have. Found by PHG-020, when the node:20-alpine container would not boot.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  // The app compiles to CommonJS (tsconfig `module: commonjs`), so the client must too.
+  moduleFormat        = "cjs"
+  // Extensionless imports: `moduleResolution: node` resolves them to .ts at build
+  // time and Node resolves them to .js at runtime. Any explicit extension breaks one
+  // side or the other.
+  importFileExtension = ""
 }
 
 datasource db {
