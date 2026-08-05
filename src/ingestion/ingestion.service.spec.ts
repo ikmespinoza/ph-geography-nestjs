@@ -1,3 +1,5 @@
+import type { Cache } from '@nestjs/cache-manager';
+
 import { IngestionService } from '@/ingestion/ingestion.service';
 import type { ChangeDetectionService } from '@/ingestion/change-detection/change-detection.service';
 import type { RunLock } from '@/ingestion/run-lock';
@@ -28,6 +30,7 @@ describe('IngestionService', () => {
   const writeCities = jest.fn();
   const acquire = jest.fn();
   const release = jest.fn();
+  const clearCache = jest.fn();
 
   const parseRegions = jest.fn();
   const parseProvinces = jest.fn();
@@ -52,6 +55,7 @@ describe('IngestionService', () => {
       { write: writeCities } as unknown as CityWriter,
       { acquire } as unknown as RunLock,
       [source],
+      { clear: clearCache } as unknown as Cache,
     );
   }
 
@@ -71,6 +75,46 @@ describe('IngestionService', () => {
     writeProvinces.mockResolvedValue(COUNTS);
     writeCities.mockResolvedValue(COUNTS);
     ensureNcrDistricts.mockResolvedValue(NO_CHANGE);
+    clearCache.mockResolvedValue(true);
+  });
+
+  describe('read-cache invalidation (PHG-015)', () => {
+    it('clears the cache once a run has created or updated rows', async () => {
+      await build().run();
+
+      expect(clearCache).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * The nightly run is normally a no-op — a forced re-run of the real dataset
+     * reports 0 created and 0 updated — so flushing a warm cache every night would be
+     * a self-inflicted latency spike for no gain.
+     */
+    it('leaves a warm cache alone when nothing actually changed', async () => {
+      writeRegions.mockResolvedValue(NO_CHANGE);
+      writeProvinces.mockResolvedValue(NO_CHANGE);
+      writeCities.mockResolvedValue(NO_CHANGE);
+
+      const report = await build().run();
+
+      expect(report.ok).toBe(true);
+      expect(clearCache).not.toHaveBeenCalled();
+    });
+
+    it('does not fail the run when the cache cannot be cleared', async () => {
+      clearCache.mockRejectedValue(new Error('store unavailable'));
+
+      // The data is written either way; the worst case is one TTL of staleness.
+      await expect(build().run()).resolves.toMatchObject({ ok: true });
+    });
+
+    it('skips invalidation entirely when another run holds the lock', async () => {
+      acquire.mockResolvedValue(null);
+
+      await build().run();
+
+      expect(clearCache).not.toHaveBeenCalled();
+    });
   });
 
   it('runs region, then province, then city — the order the foreign keys need', async () => {

@@ -47,3 +47,14 @@ export function slugify(value: string): string {
     .replace(NON_SLUG_RUN, '-')
     .replace(EDGE_SEPARATORS, '');
 }
+
+/**
+ * The rule above, stated normatively for OpenAPI (OD-15). It lives beside the
+ * implementation so the published contract and the code cannot drift; the city DTOs
+ * and the `:city` path parameter all reference this one string.
+ */
+export const SLUG_RULE_DESCRIPTION =
+  'Derived from `name`, never stored: NFD-decompose, strip combining marks, lowercase, ' +
+  'collapse each run of non-alphanumeric characters to a single `-`, then trim the ends ' +
+  "(`Sto. Niño` → `sto-nino`, `T'Boli` → `t-boli`). Matched exactly — the raw name is a 404, " +
+  'not a redirect.';

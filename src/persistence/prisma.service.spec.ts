@@ -46,12 +46,12 @@ describe('PrismaService', () => {
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it('pings the database with a lightweight SELECT 1 probe', async () => {
+  // The connectivity probe that used to live here (`pingDatabase`) is gone: PHG-017's
+  // readiness check uses Terminus' own `PrismaHealthIndicator`, which pings through
+  // `$queryRawUnsafe`. Keeping a second, unused probe would have been dead code.
+  it('exposes the raw-query surface Terminus pings through', () => {
     const { service } = createService();
-    const queryRaw = jest.spyOn(service, '$queryRaw').mockResolvedValue([{ result: 1 }]);
 
-    await service.pingDatabase();
-
-    expect(queryRaw).toHaveBeenCalledTimes(1);
+    expect(typeof service.$queryRawUnsafe).toBe('function');
   });
 });

@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 
 import { ProvinceSummaryDto } from '@/geography/dto/province-summary.dto';
@@ -16,18 +17,26 @@ import type { Province, Region } from '@/generated/prisma/client';
  */
 @Exclude()
 export class RegionDetailDto {
+  @ApiProperty({ description: 'ISO 3166-2 region code — the path identifier.', example: 'PH-13' })
   @Expose()
   readonly code: string;
 
+  @ApiProperty({ example: 'Caraga' })
   @Expose()
   readonly name: string;
 
+  @ApiProperty({ name: 'name_tl', description: 'Tagalog name.', example: 'Rehiyon ng Karaga' })
   @Expose({ name: 'name_tl' })
   readonly nameTl: string;
 
+  @ApiProperty({ description: 'Roman-numeral designation.', example: 'XIII' })
   @Expose()
   readonly acronym: string;
 
+  @ApiProperty({
+    type: () => [ProvinceSummaryDto],
+    description: "The region's provinces, ordered by name.",
+  })
   @Expose()
   @Type(() => ProvinceSummaryDto)
   readonly provinces: ProvinceSummaryDto[];

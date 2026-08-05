@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
 import type { Region } from '@/generated/prisma/client';
@@ -19,15 +20,19 @@ import type { Region } from '@/generated/prisma/client';
  */
 @Exclude()
 export class RegionSummaryDto {
+  @ApiProperty({ description: 'ISO 3166-2 region code — the path identifier.', example: 'PH-13' })
   @Expose()
   readonly code: string;
 
+  @ApiProperty({ example: 'Caraga' })
   @Expose()
   readonly name: string;
 
+  @ApiProperty({ name: 'name_tl', description: 'Tagalog name.', example: 'Rehiyon ng Karaga' })
   @Expose({ name: 'name_tl' })
   readonly nameTl: string;
 
+  @ApiProperty({ description: 'Roman-numeral designation.', example: 'XIII' })
   @Expose()
   readonly acronym: string;
 

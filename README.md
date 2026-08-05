@@ -23,7 +23,8 @@ self-updating scraper. Built with **NestJS 11 + TypeScript** and **PostgreSQL (P
    written without it), then `pnpm ingest` (scrapes the sources → DB; add `--force` to re-process pages
    that haven't changed). The NCR district provinces are created by the ingestion run itself, since they
    hang off the scraped `PH-00` region.
-8. Start the API: `pnpm dev` → **http://localhost:3000/api/v1** (health at `/api/v1/health`).
+8. Start the API: `pnpm dev` → **http://localhost:3000/api/v1** — interactive docs at
+   **`/api/docs`**, health at `/api/v1/health`.
 
 **Common scripts:** `pnpm dev` · `pnpm build` · `pnpm start:prod` · `pnpm lint` · `pnpm format` · `pnpm test` ·
 `pnpm test:e2e`.
@@ -40,8 +41,9 @@ All endpoints are read-only `GET`s under `/api/v1`.
 | GET    | `/api/v1/regions/{region}/provinces/{province}`               | `ProvincesController.show`  | A province with its region + cities                  |
 | GET    | `/api/v1/regions/{region}/provinces/{province}/cities`        | `CitiesController.index`    | Cities/municipalities in the province                |
 | GET    | `/api/v1/regions/{region}/provinces/{province}/cities/{city}` | `CitiesController.show`     | A city/municipality (with classification + province) |
-| GET    | `/api/v1/health`                                              | `HealthController`          | Liveness ping (temporary)                            |
-| GET    | `/api/docs`                                                   | —                           | OpenAPI / Swagger UI                                 |
+| GET    | `/api/v1/health`                                              | `HealthController.liveness` | Liveness — touches nothing; 503 once shutdown begins |
+| GET    | `/api/v1/health/ready`                                        | `HealthController.readiness`| Readiness — database ping + ingestion has run        |
+| GET    | `/api/docs`                                                   | —                           | OpenAPI / Swagger UI (raw spec at `/api/docs-json`)  |
 
 `{region}` and `{province}` are **ISO 3166 codes** (e.g. `PH-13`, `PH-AGN`); `{city}` is a `name` slug unique
 within its province, returned as the city's `slug` field so you never have to derive it yourself. All

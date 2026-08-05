@@ -67,4 +67,27 @@ describe('IngestionScheduler', () => {
   it('surfaces an invalid cron expression at boot instead of never firing', () => {
     expect(() => build({ scheduleCron: 'not a cron' }).onModuleInit()).toThrow();
   });
+
+  describe('graceful shutdown', () => {
+    /** Reaches the private cron callback the registered job would invoke. */
+    const fireCron = async (scheduler: IngestionScheduler): Promise<void> =>
+      (scheduler as unknown as { runScheduled(): Promise<void> }).runScheduled();
+
+    it('starts a scheduled run normally', async () => {
+      await fireCron(build());
+
+      expect(run).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses to start a new run once shutdown has begun', async () => {
+      const scheduler = build();
+
+      scheduler.onApplicationShutdown();
+      await fireCron(scheduler);
+
+      // A run already in flight is left to finish — `app.close()` waits for it, and
+      // its advisory lock releases with the session regardless.
+      expect(run).not.toHaveBeenCalled();
+    });
+  });
 });

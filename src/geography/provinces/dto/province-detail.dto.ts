@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 
 import { blankToNull } from '@/common/text/nullable.util';
@@ -17,22 +18,44 @@ import type { City, Classification, Province, Region } from '@/generated/prisma/
  */
 @Exclude()
 export class ProvinceDetailDto {
+  @ApiProperty({
+    description: 'ISO 3166-2 province code — the path identifier.',
+    example: 'PH-AGN',
+  })
   @Expose()
   readonly code: string;
 
+  @ApiProperty({ example: 'Agusan del Norte' })
   @Expose()
   readonly name: string;
 
+  @ApiProperty({
+    name: 'alt_name',
+    type: String,
+    nullable: true,
+    description: 'Former or local-variant name; `null` when the province has none.',
+    example: null,
+  })
   @Expose({ name: 'alt_name' })
   readonly altName: string | null;
 
+  @ApiProperty({ name: 'name_tl', description: 'Tagalog name.', example: 'Hilagang Agusan' })
   @Expose({ name: 'name_tl' })
   readonly nameTl: string;
 
+  @ApiProperty({
+    type: () => RegionSummaryDto,
+    description: 'The region this province belongs to.',
+  })
   @Expose()
   @Type(() => RegionSummaryDto)
   readonly region: RegionSummaryDto;
 
+  @ApiProperty({
+    type: () => [CitySummaryDto],
+    description:
+      "The province's cities and municipalities, ordered by name, each with its classification.",
+  })
   @Expose()
   @Type(() => CitySummaryDto)
   readonly cities: CitySummaryDto[];
