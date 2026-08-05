@@ -1,0 +1,190 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Serialization contract (e2e) frozen payloads cityDetail matches its frozen shape 1`] = `
+{
+  "alt_name": null,
+  "classification": {
+    "code": "CC",
+    "description": "Component City",
+  },
+  "full_name": "Cabadbaran City",
+  "is_capital": true,
+  "name": "Cabadbaran",
+  "province": {
+    "alt_name": null,
+    "code": "PH-AGN",
+    "name": "Agusan del Norte",
+    "name_tl": "Hilagang Agusan",
+  },
+  "slug": "cabadbaran",
+}
+`;
+
+exports[`Serialization contract (e2e) frozen payloads cityList matches its frozen shape 1`] = `
+[
+  {
+    "alt_name": null,
+    "classification": {
+      "code": "Mun",
+      "description": "Municipality",
+    },
+    "full_name": "Buenavista",
+    "is_capital": false,
+    "name": "Buenavista",
+    "province": {
+      "alt_name": null,
+      "code": "PH-AGN",
+      "name": "Agusan del Norte",
+      "name_tl": "Hilagang Agusan",
+    },
+    "slug": "buenavista",
+  },
+  {
+    "alt_name": null,
+    "classification": {
+      "code": "HUC",
+      "description": "Highly Urbanized City",
+    },
+    "full_name": "Butuan City",
+    "is_capital": false,
+    "name": "Butuan",
+    "province": {
+      "alt_name": null,
+      "code": "PH-AGN",
+      "name": "Agusan del Norte",
+      "name_tl": "Hilagang Agusan",
+    },
+    "slug": "butuan",
+  },
+  {
+    "alt_name": null,
+    "classification": {
+      "code": "CC",
+      "description": "Component City",
+    },
+    "full_name": "Cabadbaran City",
+    "is_capital": true,
+    "name": "Cabadbaran",
+    "province": {
+      "alt_name": null,
+      "code": "PH-AGN",
+      "name": "Agusan del Norte",
+      "name_tl": "Hilagang Agusan",
+    },
+    "slug": "cabadbaran",
+  },
+]
+`;
+
+exports[`Serialization contract (e2e) frozen payloads provinceDetail matches its frozen shape 1`] = `
+{
+  "alt_name": null,
+  "cities": [
+    {
+      "alt_name": null,
+      "classification": {
+        "code": "Mun",
+        "description": "Municipality",
+      },
+      "full_name": "Buenavista",
+      "is_capital": false,
+      "name": "Buenavista",
+      "slug": "buenavista",
+    },
+    {
+      "alt_name": null,
+      "classification": {
+        "code": "HUC",
+        "description": "Highly Urbanized City",
+      },
+      "full_name": "Butuan City",
+      "is_capital": false,
+      "name": "Butuan",
+      "slug": "butuan",
+    },
+    {
+      "alt_name": null,
+      "classification": {
+        "code": "CC",
+        "description": "Component City",
+      },
+      "full_name": "Cabadbaran City",
+      "is_capital": true,
+      "name": "Cabadbaran",
+      "slug": "cabadbaran",
+    },
+  ],
+  "code": "PH-AGN",
+  "name": "Agusan del Norte",
+  "name_tl": "Hilagang Agusan",
+  "region": {
+    "acronym": "XIII",
+    "code": "PH-13",
+    "name": "Caraga",
+    "name_tl": "Rehiyon ng Karaga",
+  },
+}
+`;
+
+exports[`Serialization contract (e2e) frozen payloads provinceList matches its frozen shape 1`] = `
+[
+  {
+    "alt_name": null,
+    "code": "PH-AGN",
+    "name": "Agusan del Norte",
+    "name_tl": "Hilagang Agusan",
+    "region": {
+      "acronym": "XIII",
+      "code": "PH-13",
+      "name": "Caraga",
+      "name_tl": "Rehiyon ng Karaga",
+    },
+  },
+  {
+    "alt_name": "Dinagat",
+    "code": "PH-DIN",
+    "name": "Dinagat Islands",
+    "name_tl": "Pulo ng Dinagat",
+    "region": {
+      "acronym": "XIII",
+      "code": "PH-13",
+      "name": "Caraga",
+      "name_tl": "Rehiyon ng Karaga",
+    },
+  },
+]
+`;
+
+exports[`Serialization contract (e2e) frozen payloads regionDetail matches its frozen shape 1`] = `
+{
+  "acronym": "XIII",
+  "code": "PH-13",
+  "name": "Caraga",
+  "name_tl": "Rehiyon ng Karaga",
+  "provinces": [
+    {
+      "alt_name": null,
+      "code": "PH-AGN",
+      "name": "Agusan del Norte",
+      "name_tl": "Hilagang Agusan",
+    },
+    {
+      "alt_name": "Dinagat",
+      "code": "PH-DIN",
+      "name": "Dinagat Islands",
+      "name_tl": "Pulo ng Dinagat",
+    },
+  ],
+}
+`;
+
+exports[`Serialization contract (e2e) frozen payloads regionList matches its frozen shape 1`] = `
+[
+  {
+    "acronym": "XIII",
+    "code": "PH-13",
+    "name": "Caraga",
+    "name_tl": "Rehiyon ng Karaga",
+  },
+]
+`;

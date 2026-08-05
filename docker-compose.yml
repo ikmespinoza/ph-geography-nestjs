@@ -1,0 +1,83 @@
+# PH Geography API — local database, and the full stack.
+#
+#   docker compose up -d db     database only — the development flow (pnpm dev on the host)
+#   docker compose up           db + migrations + seed + the API, from source
+#
+# The two flows share one file deliberately: one place defines the credentials, so a
+# compose service and a host-run `pnpm dev` cannot drift apart. Naming `db` explicitly
+# is what keeps the first command unchanged now that there are other services.
+#
+# Dev-only defaults — never reuse these credentials in a deployed environment.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ph-geography-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ph_geography
+      POSTGRES_PASSWORD: ph_geography
+      POSTGRES_DB: ph_geography
+    ports:
+      # Host port defaults to 5432; override via DB_PORT (Compose reads it from
+      # .env) when 5432 is already taken locally. Keep the port in DATABASE_URL
+      # in sync with whatever you set here.
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - ph_geography_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ph_geography -d ph_geography']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # One-shot schema + classification seed, then exits. Built from the `migrator`
+  # stage because the served image cannot do this: `prisma migrate deploy` needs the
+  # Prisma CLI and `prisma db seed` shells out to ts-node, all devDependencies the
+  # runtime image deliberately drops.
+  #
+  # No `command:` — migrating and seeding is that image's own default, so this file
+  # and a platform's pre-deploy job run exactly the same thing. Both steps are
+  # idempotent, so `up` is safe to re-run.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    container_name: ph-geography-migrate
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ph_geography:ph_geography@db:5432/ph_geography
+
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: ph-geography-api
+    restart: unless-stopped
+    # node runs as PID 1 so it receives SIGTERM directly; this only adds a reaper
+    # for orphaned children.
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    # Explicit, NOT `env_file: .env` — a developer's .env points DATABASE_URL at
+    # localhost, which inside this container is this container. Everything else
+    # falls back to the Zod schema's defaults.
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://ph_geography:ph_geography@db:5432/ph_geography
+      # The whole point of a self-updating service. Safe here because the stack runs
+      # a single replica — the in-memory cache and the in-process cron both assume it.
+      INGESTION_ENABLE_SCHEDULE: 'true'
+      LOG_LEVEL: info
+
+volumes:
+  ph_geography_db_data:

@@ -1,0 +1,138 @@
+# PH Geography API — CI (PHG-021).
+#
+# Three jobs, deliberately separate: `quality` needs no database and is the fast
+# feedback loop; `e2e` pays for a Postgres service container; `image` proves the
+# artefact PHG-020 defines still builds. They run in parallel — none depends on
+# another, because a type error and a broken Dockerfile are independent facts and
+# waiting to learn the second one helps nobody.
+name: CI
+
+on:
+  push:
+    branches: [main, development]
+    tags: ['v*']
+  pull_request:
+
+# A newer push to the same ref makes the in-flight run irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint · types · unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # version comes from `packageManager` in package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # `postinstall` runs `prisma generate`, which needs no database — only
+      # prisma/schema.prisma and prisma.config.ts, both committed.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+
+      # Jest directly, not through the script, so the CI-only flag is visible here.
+      # --ci is what stops a NEW snapshot from writing itself on first run and
+      # passing silently; GitHub Actions is auto-detected by jest's `ci-info`
+      # dependency, but the contract should not rest on a transitive package's
+      # detection table. Coverage floors live in jest.config.ts and fail the process
+      # themselves — CI does not restate them.
+      - run: pnpm exec jest --ci --coverage
+
+  e2e:
+    name: E2E against Postgres
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ph_geography
+          POSTGRES_PASSWORD: ph_geography
+          # Named for the suite outright, so no CREATE DATABASE step is needed. The
+          # e2e suite truncates and re-seeds, which is only safe in a database it owns.
+          POSTGRES_DB: ph_geography_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ph_geography -d ph_geography_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # test/setup-env.ts reads this from the environment first and falls back to
+      # .env only if absent — so CI needs no .env file at all.
+      TEST_DATABASE_URL: postgresql://ph_geography:ph_geography@localhost:5432/ph_geography_test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations to the test database
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+
+      # --runInBand because three specs share that one database and truncation is not
+      # parallel-safe; the geography-db spec replays the committed HTML fixtures
+      # through the real ingestion pipeline, so the run stays offline.
+      - run: pnpm exec jest --config ./test/jest-e2e.json --runInBand --ci
+
+  image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # only exercised by the tag-triggered push below
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Built on every run so a broken Dockerfile is caught by the PR that breaks it;
+      # pushed only on a `v*` tag, so the registry holds releases rather than every
+      # merge. `target: runtime` is explicit — the migrator stage is a separate image.
+      #
+      # The tag is conditional because a Docker tag cannot contain a slash, and
+      # `github.ref_name` is `<pr>/merge` on a pull request and `feature/x` on a
+      # branch — naming the image after it unconditionally fails every PR with
+      # "invalid reference format", which is a red pipeline for no reason at all.
+      # Off a release tag the image is built, cached and discarded, so a local name
+      # is all it needs.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: >-
+            ${{ startsWith(github.ref, 'refs/tags/v')
+            && format('ghcr.io/{0}:{1},ghcr.io/{0}:latest', github.repository, github.ref_name)
+            || 'ph-geography-api:ci' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
