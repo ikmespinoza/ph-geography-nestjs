@@ -1,6 +1,6 @@
 {
   "name": "ph-geography-api",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "REST API for Philippine geographic reference data (regions, provinces, cities/municipalities) with a self-updating scraper. Built with NestJS and Prisma.",
   "license": "MIT",
   "author": "Ian Kris Espinoza",
